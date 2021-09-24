@@ -7,17 +7,19 @@
  Licensed under the Apache License 2.0. See LICENSE file in the project root for full license information.
 """
 
-from Core.Math.Point2 import Point2
-from Core.Math.Line2 import Line2
-from Core.Math.MathUtils import MathUtils
-from Core.Math.Constants import Constants
+import collections
+import operator
+import sys
+from math import sqrt, fabs, atan2
+
 import cv2
 import numpy as np
-import operator
-from math import sqrt, fabs, atan2
-import collections
-import sys
+
 from Core.Features.FeatureManager import Dimensions, CorrelatedEntity
+from Core.Math.Constants import Constants
+from Core.Math.Line2 import Line2
+from Core.Math.MathUtils import MathUtils
+from Core.Math.Point2 import Point2
 from Core.Utils.ImgTransform import ImgTransform
 
 
@@ -25,9 +27,9 @@ class Cognition():
 
     @staticmethod
     def GetUParam(c1, line):
-       startpt = line.startPoint
-       endpt = line.endPoint
-       denominator = fabs(endpt.x - startpt.x)
+        startpt = line.startPoint
+        endpt = line.endPoint
+        denominator = fabs(endpt.x - startpt.x)
        tolerance = 1.0
        U = 0
        if denominator < tolerance :
@@ -469,7 +471,7 @@ class Cognition():
                 Direction = Cognition.GetDirection(projectedPt, projectedCorner)
                 ah._Direction = Direction
                 Cognition.AssignArrowHeadsDirection(ArrowHeadsList, ah._ArrowCenter, Direction)
-                print(Direction)
+                # print(Direction)
 
     @staticmethod
     def CheckThicknessInVicinity(x, y, distImg):

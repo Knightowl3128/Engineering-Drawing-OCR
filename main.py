@@ -1,17 +1,25 @@
-import numpy as np
-import cv2
-from PIL import Image
-import pytesseract
-import fitz
+import csv
+import os
 import re
-from string import printable
+import warnings
+from pathlib import Path
+
+import cv2
+import fitz
+import numpy as np
+import pytesseract
+from PIL import Image
+
 import Image2CAD
-import tempfile
-import pandas as pd
-from itertools import groupby
 
 
 class FileHandle:
+    """
+    Handles rendering of images from PDF and checking file type.
+    Parameters: filename - str
+                folder_path - str
+    """
+
     def __init__(self, filename, folder_path):
         self.path = folder_path + filename
         self.filename = filename
@@ -59,6 +67,10 @@ class DrawingProcess:
         self.diagram_rects = []
         self.diagrams = []
         self.get_drawings()
+
+        self.largest_x = 0
+        self.largest_y = 0
+        self.largest_z = 0
 
     def get_drawings(self):
         self.no_border = self.crop_rect(self.get_border())
@@ -158,13 +170,16 @@ class DrawingProcess:
         for rect in self.diagram_rects:
             x, y, w, h = rect
             image = self.no_border[y:y + h, x:x + w].copy()
-            self.diagrams.append(DiagramProcess(image,drawing_resolution = self.resolution))
+            self.diagrams.append(DiagramProcess(image, drawing_resolution=self.resolution))
+
+        self.diagrams[0].get_text()
+        self.diagrams[0].get_arrows_and_dimension_lines()
+        self.largest_x, self.largest_y = self.diagrams[0].analyze_data()
 
         self.diagrams[1].get_text()
         self.diagrams[1].get_arrows_and_dimension_lines()
-        self.diagrams[1].analyze_data()
-
-
+        z_1, z_2 = self.diagrams[1].analyze_data()
+        self.largest_z = [z_1, z_2]
 
 
 class DiagramProcess:
@@ -221,6 +236,8 @@ class DiagramProcess:
         for c in cnts:
             rect = cv2.boundingRect(c)
             x, y, w, h = rect
+            w += 10
+            h += 10
             box_now = drawing_with_lines[y:y + h, x:x + w]
 
             if w > 0.2 * drawing_with_lines.shape[1]:
@@ -303,14 +320,13 @@ class DiagramProcess:
             end = tuple(map(int, line[1]))
             image = cv2.line(self.image, start, end, color, 3)
 
-        pil_show(image)
+        # pil_show(image)
         # pil_show(self.erased_img)
         # cv2.imwrite(r"D:\My Projects\Python Projects\Engineering Drawing OCR\Drawings\Images\fill_test.png",self.erased_img)
 
     def floodfill_segment(self):
         drawing_with_lines = self.image.copy()
 
-        print('hereeeeeee')
         pil_show(self.erased_img)
         image = cv2.cvtColor(self.erased_img, cv2.COLOR_BGR2GRAY)
         # mask = np.zeros(drawing_with_lines.shape[:-1], np.uint8)
@@ -347,7 +363,7 @@ class DiagramProcess:
             if line[2] == 'Vertical' and sum>largest_vertical:
                 largest_vertical = sum
 
-        print('largest after', largest_vertical, largest_horiz)
+        return largest_horiz, largest_vertical
 
     def find_text(self,start, end, alignment):
 
@@ -366,7 +382,6 @@ class DiagramProcess:
         for data in self.text_data:
             pos = data[1]
 
-            print('here',pos,start,end, alignment, data[0])
             if start[index_1]<=pos[index_1]<=end[index_1] and start[index_2]+offset<pos[index_2]<start[index_2]:
                 return data[0]
 
@@ -400,21 +415,48 @@ class DiagramProcess:
 def pil_show(img):
     im_pil = Image.fromarray(img)
 
-    im_pil.show()
+    # im_pil.show()
 
 if __name__ == "__main__":
     # PB72692A.PDF 279721107.pdf PB74253A.PDF PC65005B.PDF
+
     # drawing = FileHandle('PB74253A.PDF', 'Drawings\\')
-    drawing = FileHandle('279721107.pdf', 'Drawings\\')
-    drawing_process = DrawingProcess(drawing.image)
-    drawing_process.draw_diagram_borders()
-    drawing_process.start_diagram_processing()
+    # drawing = FileHandle('279721107.pdf', 'Drawings\\')
+    # drawing_process = DrawingProcess(drawing.image)
+    # drawing_process.draw_diagram_borders()
+    # drawing_process.start_diagram_processing()
+    # print(drawing_process.largest_x, drawing_process.largest_y, drawing_process.largest_z)
 
+    # TODO: Work all these into the fileHandle class
+    csv_filename = "found_dimensions.csv"
+    file_exist = Path(csv_filename).exists()
+    csv_file = open(csv_filename, 'a')
+    headers = ['Filename', 'Found Value - x', 'Found Value - y', 'Found Value(s) - z', 'File Path']
+    writer = csv.writer(csv_file)
+    reader = csv.reader(csv_file)
 
-    # part = PartImage('PC65005B.PDF', 'Drawings\\')
-    # im = ImageProcess(part.image)
+    if not file_exist:
+        writer.writerow(headers)
 
+    pc_location = "D:\My Projects\Python Projects\Engineering Drawing OCR\Drawings\\"
+    drawings_path = 'Drawings'
+    drawing_files = [f for f in os.listdir(drawings_path)
+                     if os.path.isfile(os.path.join(drawings_path, f))]  # Gets only the files (not directories)
 
-    # im.get_text()
-    # im.get_arrows(1.5555555555555556)
-    # im.floodfill_segment()
+    for image_file in drawing_files:
+        try:
+            drawing = FileHandle(image_file, 'Drawings\\')
+            drawing_process = DrawingProcess(drawing.image)
+            drawing_process.draw_diagram_borders()
+            drawing_process.start_diagram_processing()
+            print(drawing_process.largest_x, drawing_process.largest_y, drawing_process.largest_z)
+            row = [image_file, drawing_process.largest_x, drawing_process.largest_y, drawing_process.largest_z,
+                   os.path.join(pc_location, image_file)]
+            writer.writerow(row)
+        except Exception as e:
+            file_error = "Error with the following file: {fname}".format(fname=image_file)
+            warnings.warn(file_error)
+            print('-------------------------------------------------------')
+            print(e)
+            print('-------------------------------------------------------')
+            continue

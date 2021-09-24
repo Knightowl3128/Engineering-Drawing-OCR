@@ -7,15 +7,15 @@
  Licensed under the Apache License 2.0. See LICENSE file in the project root for full license information.
 """
 
-import cv2
-import time
 import os
-import sys
+import time
+
+import cv2
 
 global make_dir_root, timestr
 
 
-def main(argv1, scale, show = False):
+def main(argv1, scale, show=False):
     img_path = argv1
     img_path = os.path.abspath(img_path)
 
@@ -23,25 +23,19 @@ def main(argv1, scale, show = False):
     os.chdir(dir)
     currentDir = os.getcwd()
 
-    from Core.Features.Texts.TextsFeature import TextsFeature
     from Core.Features.Arrowheads.ArrowHeadsFeature import ArrowHeadsFeature
-    from Core.Features.Circles.CirclesFeature import CirclesFeature
-    from Core.Features.LineSegments.LineSegmentsFeature import LineSegmentsFeature
     from Core.Features.Cognition.DimensionalLinesFeature import DimensionalLinesFeature
     from Core.Features.Cognition.Cognition import Cognition
-    from Core.Features.Cognition.SupportLinesFeature import SupportLinesFeature
     from Core.Features.FeatureManager import FeatureManager
     from Core.Utils.Eraser import Eraser
-    from Core.Utils.I2CWriter import I2CWriter
-    from Core.Utils.DXFWriter import DXFWriter
 
     timestr = time.strftime("%Y%m%d-%H%M%S")
     Start_time = time.strftime("%H hr - %M min - %S sec")
-    print("Image2CAD Script Started at " + Start_time + "...")
+    # print("Image2CAD Script Started at " + Start_time + "...")
     base = os.path.basename(img_path)
     folder_name = os.path.splitext(base)[0]
-    print("Image Loaded: " + img_path + "...")
-    print("Making Required Directory...")
+    # print("Image Loaded: " + img_path + "...")
+    # print("Making Required Directory...")
     make_dir_Output = r"./Output"
     if not os.path.exists(make_dir_Output):
         os.mkdir(make_dir_Output)
@@ -51,7 +45,7 @@ def main(argv1, scale, show = False):
         os.mkdir(make_dir_folder)
     os.mkdir(make_dir_root)
 
-    print("Initializing Feature Manager...")
+    # print("Initializing Feature Manager...")
     FM = FeatureManager()
     FM._ImagePath = img_path
     FM._RootDirectory = make_dir_root
@@ -63,11 +57,11 @@ def main(argv1, scale, show = False):
     Erased_Img = img.copy()
 
     AD_Time = time.strftime("%H hr - %M min - %S sec")
-    print("Arrow Detection Started at " + AD_Time + "...")
+    # print("Arrow Detection Started at " + AD_Time + "...")
     BB_Arrows, Arrow_Img = ArrowHeadsFeature.Detect(FM)
     FM._DetectedArrowHead = BB_Arrows
     FM._ImageDetectedArrow = Arrow_Img
-    print("Arrow Detection Complete...")
+    # print("Arrow Detection Complete...")
     if show:
         cv2.imshow("Detected Arrows", FM._ImageDetectedArrow)
         cv2.waitKey(0)
@@ -79,11 +73,11 @@ def main(argv1, scale, show = False):
     FM._ImageCleaned = Erased_Img
 
     DL_Time = time.strftime("%H hr - %M min - %S sec")
-    print("Dimensional Line Detection Started at " + DL_Time + "...")
+    # print("Dimensional Line Detection Started at " + DL_Time + "...")
     segments, DimensionalLine_Img = DimensionalLinesFeature.Detect(FM)
     FM._ImageDetectedDimensionalLine = DimensionalLine_Img
     FM._DetectedDimensionalLine = segments
-    print("Dimensional Line Detection Complete...")
+    # print("Dimensional Line Detection Complete...")
     if show:
         cv2.imshow("Detected Dimensional Lines", FM._ImageDetectedDimensionalLine)
         cv2.waitKey(0)
@@ -104,9 +98,9 @@ def main(argv1, scale, show = False):
             Erased_Img = Eraser.EraseLine(FM._ImageCleaned, P1, P2)
     FM._ImageCleaned = Erased_Img
 
-    print("Correlating ArrowHead Direction...")
+    # print("Correlating ArrowHead Direction...")
     Cognition.ArrowHeadDirection(FM)
-    print("Correlating ArrowHead Direction Complete...")
+    # print("Correlating ArrowHead Direction Complete...")
     arrow_dict = [{'Direction':arrow._Direction, 'x':arrow._ArrowCenter.x/scale, 'y':arrow._ArrowCenter.y/scale }
                   for arrow in FM._DetectedArrowHead]
     # arrow_dict = FM._DetectedArrowHead
